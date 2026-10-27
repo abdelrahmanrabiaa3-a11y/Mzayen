@@ -1,0 +1,30 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>المزين: لوحة الإدارة</title>
+<style>
+:root{--pri:#0F3D33;--br:#B8802A;--bg:#F3F6F4;--card:#fff;--ink:#12261F;--line:#D5DFDA}
+@media(prefers-color-scheme:dark){:root{--bg:#0C1713;--card:#14241E;--ink:#E8F0EC;--line:#243A32;--pri:#2E8A70}}
+body{margin:0;font-family:system-ui,Tahoma,sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:900px;margin:0 auto;padding:16px}h1{color:var(--pri);margin:8px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.grid .card{margin:0}
+.big{font-size:28px;font-weight:800;color:var(--pri)}small{opacity:.7}
+input,button{font:inherit;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);width:100%;margin:5px 0}
+button{background:var(--pri);color:#fff;border:0;font-weight:700;cursor:pointer}
+.bars{display:flex;gap:8px;align-items:flex-end;height:140px}.bars div{flex:1;text-align:center;font-size:12px}.bars i{display:block;background:var(--br);border-radius:6px 6px 0 0}
+table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid var(--line);text-align:right}
+</style></head><body><main><h1>المزين: لوحة الإدارة</h1>
+<div id="login" class="card" style="max-width:380px"><input id="em" type="email" placeholder="البريد الإلكتروني" autocomplete="username"><input id="pw" type="password" placeholder="كلمة المرور" autocomplete="current-password"><small id="q"></small><input id="ca" inputmode="numeric" placeholder="الإجابة"><input id="website" style="display:none" tabindex="-1" autocomplete="off"><button onclick="go()">دخول</button><small id="err" style="color:#D9483B"></small></div>
+<div id="dash" hidden></div>
+<script>
+let ct,tok;const $=i=>document.getElementById(i);
+async function ch(){const r=await(await fetch('/api/challenge')).json();ct=r.ct;$('q').textContent='اثبت إنك مش روبوت: كام '+r.q+'؟'}
+async function go(){$('err').textContent='';
+ const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'admin',email:$('em').value,password:$('pw').value,ct,ca:$('ca').value,website:$('website').value})});
+ const j=await r.json();if(!r.ok){$('err').textContent=r.status===429?'محاولات كتير، جرّب بعد شوية':'بيانات غلط أو إجابة التحقق غلط';ch();return}
+ tok=j.token;$('login').hidden=true;stats()}
+async function stats(){const r=await fetch('/api/admin/stats',{headers:{Authorization:'Bearer '+tok}});const j=await r.json(),t=j.totals,mx=Math.max(1,...j.daily.map(x=>x.n));
+ const c=(l,v)=>`<div class="card"><small>${l}</small><div class="big">${v}</div></div>`;
+ $('dash').hidden=false;$('dash').innerHTML=`<div class="grid">${c('العملاء',t.customers)}${c('الحلاقين',t.barbers)}${c('حجوزات اليوم',t.today)}${c('حجوزات جاية',t.booked)}${c('حلاقات مؤكدة',t.done)}${c('ملغية',t.cancelled)}${c('قيمة الحلاقات المؤكدة (ج.م)',t.gmv)}</div>
+ <div class="card"><b>الحجوزات آخر ٧ أيام</b><div class="bars">${j.daily.map(x=>`<div><i style="height:${x.n/mx*100}px"></i>${x.n}<br><small>${x.d}</small></div>`).join('')||'<small>لسه مفيش بيانات</small>'}</div></div>
+ <div class="card"><b>أكتر الحلاقين شغلاً</b><table><tr><th>المحل</th><th>الحلاقات</th><th>القيمة</th></tr>${j.topBarbers.map(b=>`<tr><td>${b.shop_name.replace(/</g,'&lt;')}</td><td>${b.n}</td><td>${b.revenue}</td></tr>`).join('')}</table></div>`}
+ch();
+</script></main></body></html>
